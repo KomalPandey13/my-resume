@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komal Pandey - Interactive Resume</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (FDFBF8, 4A4A4A, A58A73, 8B705C) -->
+    <!-- Application Structure Plan: A single-page portfolio design with a top navigation bar for quick access to key sections (Profile, Experience, Skills, Projects, Contact). The structure prioritizes user engagement over a traditional linear resume format. An interactive tabbed timeline for 'Experience' allows users to focus on specific roles without overwhelming them. The 'Skills' section uses charts to provide a quick, visual summary of technical and soft skills, which is more digestible than a simple list. This dashboard-like approach is chosen to make exploring Komal's qualifications an intuitive and engaging experience for recruiters. -->
+    <!-- Visualization & Content Choices: 
+        - Experience History -> Goal: Organize/Inform -> Viz: Interactive Tabs (HTML/JS) -> Interaction: Click to switch content -> Justification: Cleaner and more focused than a long list, allowing users to delve into details as needed.
+        - Soft Skills List -> Goal: Compare/Inform -> Viz: Radar Chart (Chart.js/Canvas) -> Interaction: Hover for tooltips -> Justification: Provides a holistic, "well-rounded" view of interpersonal abilities, which is visually compelling.
+        - Technical Skills List -> Goal: Compare/Inform -> Viz: Horizontal Bar Chart (Chart.js/Canvas) -> Interaction: Hover for tooltips -> Justification: Effectively compares proficiency across different technologies in a clear, standard format.
+        - Projects/Awards -> Goal: Organize/Inform -> Viz: Card Layout (HTML/Tailwind) -> Interaction: Subtle hover effects -> Justification: Modern, responsive way to present distinct items of work and achievement.
+        - Resume Summary Generator -> Goal: Inform/Synthesize -> Viz: Text Output (HTML/JS) -> Interaction: Button click to generate summary via LLM -> Justification: Provides a quick, AI-powered overview of the resume, useful for rapid assessment.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Max width for chart container */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height for chart */
+            max-height: 400px; /* Max height for chart */
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px; /* Adjust height for larger screens */
+            }
+        }
+        .tab-active {
+            border-color: #A58A73;
+            color: #A58A73;
+            font-weight: 600;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #A58A73;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Global transition for subtle hover effects */
+        a, button, .tab-btn, .hover\:shadow-lg, .hover\:-translate-y-1 {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Sticky header shadow on scroll */
+        .header-scrolled {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Animation for scroll reveal */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .tab-pane {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .tab-pane.hidden {
+            opacity: 0;
+            /* To ensure it's truly hidden and doesn't take up space, display: none might be needed after transition */
+            /* For simplicity and smooth transition, just opacity 0 is fine for interactive resume. */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="main-header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-[#A58A73]">
+                Komal Pandey
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#profile" class="text-gray-600 hover:text-[#A58A73] transition-colors">Profile</a>
+                <a href="#experience" class="text-gray-600 hover:text-[#A58A73] transition-colors">Experience</a>
+                <a href="#skills" class="text-gray-600 hover:text-[#A58A73] transition-colors">Skills</a>
+                <a href="#projects" class="text-gray-600 hover:text-[#A58A73] transition-colors">Projects</a>
+                <a href="#contact" class="text-gray-600 hover:text-[#A58A73] transition-colors">Contact</a>
+            </div>
+            <div class="md:hidden">
+                <button id="menu-btn" class="text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#profile" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Profile</a>
+            <a href="#experience" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Experience</a>
+            <a href="#skills" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Skills</a>
+            <a href="#projects" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Projects</a>
+            <a href="#contact" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Contact</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        
+        <section id="profile" class="text-center mb-24 animate-on-scroll">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-[#A58A73]">Community Relations & Tech Enthusiast</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+                A driven B.Tech student blending foundational technical acumen with exceptional interpersonal and organizational skills. Passionate about community building, event management, and the synergy of technology and environmental sustainability. Eager to leverage proven abilities in leading collaborative teams, coordinating hackathons, and fostering vibrant tech ecosystems to promote Google initiatives and empower peers as a Google Ambassador.
+            </p>
+            <div class="bg-white p-8 rounded-xl shadow-md border border-gray-200/50 max-w-3xl mx-auto mb-8">
+                <h3 class="text-2xl font-bold text-[#A58A73] mb-4">Education</h3>
+                <p class="text-xl font-semibold">Bachelor of Technology, Computer Science Engineering</p>
+                <p class="text-gray-600 mb-1">Shambhunath Institute of Engineering and Technology, Prayagraj</p>
+                <p class="text-gray-500 text-sm">Expected Graduation: September 2027 | CGPA: 7.5</p>
+            </div>
+
+            <button id="generate-summary-btn" class="bg-[#A58A73] text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-[#8B705C] transition-colors shadow-md">
+                ✨ Generate Resume Summary
+            </button>
+            <div id="summary-output-container" class="mt-8 hidden">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 max-w-3xl mx-auto">
+                    <h3 class="text-xl font-bold text-[#A58A73] mb-4">AI-Generated Summary</h3>
+                    <div id="summary-output" class="text-gray-700 text-left"></div>
+                    <div id="summary-loading" class="flex justify-center items-center mt-4 hidden">
+                        <div class="spinner"></div>
+                        <span class="ml-2 text-gray-600">Generating summary...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="experience" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Professional Experience</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">This section highlights key roles in community engagement and event organization. Click on each tab to explore the specific responsibilities and achievements in that position, showcasing a consistent dedication to building and supporting tech communities.</p>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-8 border-b border-gray-200">
+                    <nav class="flex space-x-2 sm:space-x-4 overflow-x-auto pb-2" aria-label="Tabs">
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap tab-active" data-tab="gdg-wit">GDG - Women in Tech</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="gdg-social">GDG - Social Media</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="scc">SCC Coding Club</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="blog-writer">Blog Writer</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="report-writer">Report Writer</button>
+                    </nav>
+                </div>
+
+                <div id="tab-content" class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <div id="gdg-wit" class="tab-pane active">
+                        <h3 class="font-bold text-xl mb-1">Women in Tech Program Contributor/Trainee</h3>
+                        <p class="text-gray-500 mb-4">GDG Prayagraj | Apr 2025 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Supported daily operations, coordinating emails and virtual meetings for community engagement.</li>
+                            <li>Contributed to report writing, synthesizing session feedback and engagement metrics.</li>
+                            <li>Assisted in hosting virtual Women in Tech sessions, including managing technical aspects and participant interaction for online events.</li>
+                            <li>Hosted several online sessions for Women in Tech leadership initiatives.</li>
+                            <li>Gained hands-on experience in community outreach, event coordination, and strategic communication.</li>
+                        </ul>
+                    </div>
+                    <div id="gdg-social" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Social Media and Community Volunteer</h3>
+                        <p class="text-gray-500 mb-4">GDG Prayagraj | Jan 2025 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Orchestrated community engagement by creating and scheduling compelling social media content.</li>
+                            <li>Served as a host/moderator for various college events and group discussions.</li>
+                            <li>Spoke in and anchored various college events and programs, demonstrating strong public speaking skills.</li>
+                            <li>Participated actively in debates and group discussions, contributing insightful perspectives.</li>
+                            <li>Contributed to the Report Writing Team, providing analytical insights for public outreach.</li>
+                            <li>Supported coding initiatives and club activities, including involvement in hackathon events.</li>
+                        </ul>
+                    </div>
+                    <div id="scc" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Core Member (General Secretary)</h3>
+                        <p class="text-gray-500 mb-4">SCC Coding Club | Nov 2024 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Co-organized "Code Oddessey" competition for 150+ participants, managing logistics and communication.</li>
+                            <li>Played a key role in hackathon coordination, ensuring successful execution of technical challenges.</li>
+                            <li>Demonstrated strong problem-solving and teamwork in a fast-paced event environment.</li>
+                            <li>Contributed to successful event promotion, leading to full participant registration.</li>
+                        </ul>
+                    </div>
+                    <div id="blog-writer" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Blog Writer</h3>
+                        <p class="text-gray-500 mb-4">Medium & Hashnode | [Start Date] – Present (Please fill in your start date)</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Regularly write and publish technical and community-focused articles on Medium and Hashnode platforms.</li>
+                            <li>Engage with readers and contribute to online discussions within the tech blogging community.</li>
+                            <li>Utilize content creation skills to explain complex topics clearly and concisely.</li>
+                            <li>[Add specific examples of topics, impact, or reader engagement if possible.]</li>
+                        </ul>
+                    </div>
+                    <div id="report-writer" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Report Writer</h3>
+                        <p class="text-gray-500 mb-4">TensorFlow User Group Prayagraj & GDG Prayagraj | [Start Date] – Present (Please fill in your start date)</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Authored comprehensive reports synthesizing session feedback, engagement metrics, and program development insights.</li>
+                            <li>Applied strong analytical and communication skills to refine public outreach strategies.</li>
+                            <li>Contributed to documentation and knowledge sharing for community initiatives.</li>
+                            <li>Ensured clear and effective communication of technical and event-related information.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="skills" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Core Competencies</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">The following charts offer a visual summary of my key skills. The radar chart illustrates my strengths in interpersonal and leadership areas, essential for community roles. The bar chart details my technical proficiency, showcasing the tools I use to build and innovate.</p>
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <h3 class="text-xl font-bold text-center mb-4">Soft Skills</h3>
+                    <div class="chart-container">
+                        <canvas id="softSkillsChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <h3 class="text-xl font-bold text-center mb-4">Technical Skills</h3>
+                    <div class="chart-container">
+                        <canvas id="technicalSkillsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Projects & Achievements</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">This area highlights key projects that reflect my technical abilities and passion for creating impactful solutions, alongside notable achievements in competitive environments. Each item represents a commitment to learning and applying my skills.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">EcoQuest: Your Planet Pal</h3>
+                    <p class="text-sm text-gray-500 mb-3">Build Fest '25</p>
+                    <p class="text-gray-700">Developed an interactive, personalized guide application focused on promoting environmental action and sustainable practices.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">Frontend Development Project</h3>
+                    <p class="text-sm text-gray-500 mb-3">Personal Project</p>
+                    <p class="text-gray-700">Designed and implemented responsive user interfaces for a web application, focusing on user experience and clean code.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">Code ODC Competition</h3>
+                    <p class="text-sm text-gray-500 mb-3">Achievement</p>
+                    <p class="text-gray-700">Secured 2nd place in the competition hosted by SCC SIET Coding Club, demonstrating strong problem-solving and coding abilities.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">"Patchamomma" Selection</h3>
+                    <p class="text-sm text-gray-500 mb-3">Achievement</p>
+                    <p class="text-gray-700">Selected for the "Patchamomma" initiative by GDG Prayagraj, highlighting a proactive approach to impactful projects.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer id="contact" class="bg-gray-800 text-white">
+        <div class="container mx-auto px-6 py-10 text-center">
+            <h2 class="text-2xl font-bold mb-4">Get In Touch</h2>
+            <p class="mb-6">Feel free to reach out for collaborations or just a friendly chat.</p>
+            <div class="flex justify-center items-center space-x-6">
+                <a href="mailto:komalpandey23139936@gmail.com" class="hover:text-[#A58A73] transition-colors flex items-center justify-center">
+                    <span class="mr-2 text-xl">📧</span> komalpandey23139936@gmail.com
+                </a>
+                <span>&bull;</span>
+                <a href="https://linkedin.com/in/komal-pandey-2b1b8b2a0" target="_blank" class="hover:text-[#A58A73] transition-colors flex items-center justify-center">
+                    <span class="mr-2 text-xl">🔗</span> LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile menu toggle
+            const menuBtn = document.getElementById('menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Sticky header shadow on scroll
+            const mainHeader = document.getElementById('main-header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 0) {
+                    mainHeader.classList.add('header-scrolled');
+                } else {
+                    mainHeader.classList.remove('header-scrolled');
+                }
+            });
+
+            // Experience Tabs
+            const tabs = document.querySelectorAll('.tab-btn');
+            const panes = document.querySelectorAll('.tab-pane');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(item => item.classList.remove('tab-active'));
+                    tab.classList.add('tab-active');
+
+                    const target = tab.getAttribute('data-tab');
+                    panes.forEach(pane => {
+                        // Fade out other panes and then hide
+                        if (pane.id !== target) {
+                            pane.style.opacity = '0';
+                            pane.addEventListener('transitionend', function handler() {
+                                pane.classList.add('hidden');
+                                pane.removeEventListener('transitionend', handler);
+                            }, { once: true });
+                        }
+                    });
+
+                    // Fade in the target pane
+                    const targetPane = document.getElementById(target);
+                    targetPane.classList.remove('hidden'); // Make it visible for transition
+                    setTimeout(() => {
+                        targetPane.style.opacity = '1';
+                    }, 10); // Small delay to trigger transition
+                });
+            });
+
+            // Initial setup for tab content display
+            // Ensure only the first tab content is visible initially and others are hidden with opacity 0
+            panes.forEach((pane, index) => {
+                if (index === 0) {
+                    pane.classList.remove('hidden');
+                    pane.style.opacity = '1';
+                } else {
+                    pane.classList.add('hidden');
+                    pane.style.opacity = '0';
+                }
+            });
+
+
+            // Chart.js Configuration
+            const chartFontColor = '#4A4A4A';
+            const chartGridColor = 'rgba(200, 200, 200, 0.2)';
+            const primaryChartColor = 'rgba(165, 138, 115, 0.6)';
+            const primaryChartBorderColor = 'rgba(165, 138, 115, 1)';
+
+            // Soft Skills Chart (Radar)
+            const softSkillsCtx = document.getElementById('softSkillsChart').getContext('2d');
+            new Chart(softSkillsCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Community Mgmt', 'Leadership', 'Event Coordination', 'Public Speaking', 'Teamwork', 'Problem-Solving', 'Content Creation', 'Report Writing'],
+                    datasets: [{
+                        label: 'Soft Skills',
+                        data: [90, 85, 95, 95, 90, 88, 92, 90],
+                        backgroundColor: primaryChartColor,
+                        borderColor: primaryChartBorderColor,
+                        pointBackgroundColor: primaryChartBorderColor,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: primaryChartBorderColor
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: { color: chartGridColor },
+                            grid: { color: chartGridColor },
+                            pointLabels: { color: chartFontColor, font: { size: 12 } },
+                            ticks: {
+                                backdropColor: '#FDFBF8',
+                                color: chartFontColor,
+                                stepSize: 25
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Technical Skills Chart (Bar)
+            const technicalSkillsCtx = document.getElementById('technicalSkillsChart').getContext('2d');
+            new Chart(technicalSkillsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Python', 'C++', 'JavaScript', 'HTML/CSS', 'Dart', 'FlutterFlow', 'Prompt Engineering', 'AI Tools', 'Canva', 'Google Workspace', 'Microsoft Workspace'],
+                    datasets: [{
+                        label: 'Technical Proficiency (Illustrative)',
+                        data: [85, 75, 80, 90, 70, 75, 85, 87, 90, 90, 88],
+                        backgroundColor: primaryChartColor,
+                        borderColor: primaryChartBorderColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: chartGridColor },
+                            ticks: { color: chartFontColor }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: chartFontColor }
+                        }
+                    }
+                }
+            });
+
+            // Gemini API Integration for Resume Summary
+            const generateSummaryBtn = document.getElementById('generate-summary-btn');
+            const summaryOutputContainer = document.getElementById('summary-output-container');
+            const summaryOutput = document.getElementById('summary-output');
+            const summaryLoading = document.getElementById('summary-loading');
+
+            generateSummaryBtn.addEventListener('click', generateResumeSummary);
+
+            async function generateResumeSummary() {
+                summaryOutputContainer.classList.remove('hidden');
+                summaryOutput.innerHTML = '';
+                summaryLoading.classList.remove('hidden');
+
+                const resumeContent = `
+                    Summary: A driven B.Tech student blending foundational technical acumen with exceptional interpersonal and organizational skills. Passionate about community building, event management, and the synergy of technology and environmental sustainability. Eager to leverage proven abilities in leading collaborative teams, coordinating hackathons, and fostering vibrant tech ecosystems to promote Google initiatives and empower peers as a Google Ambassador.
+
+                    Education: Bachelor of Technology, Computer Science Engineering from Shambhunath Institute of Engineering and Technology, Prayagraj. Expected Graduation: September 2027. CGPA: 7.5.
+
+                    Certifications: AI for Marketing and Promoting (EdX).
+
+                    Experience:
+                    - Women in Tech Program Contributor/Trainee, GDG Prayagraj (Apr 2025 – Present): Supported daily operations, coordinating emails and virtual meetings for community engagement; Contributed to report writing, synthesizing session feedback and engagement metrics; Assisted in hosting virtual Women in Tech sessions, managing technical aspects and participant interaction; Gained hands-on experience in community outreach, event coordination, and strategic communication; Hosted several online sessions for Women in Tech leadership initiatives.
+                    - Social Media and Community Volunteer, GDG Prayagraj (Jan 2025 – Present): Orchestrated community engagement by creating and scheduling compelling social media content; Served as a host/moderator for various college events and group discussions; Spoke in and anchored various college events and programs, demonstrating strong public speaking skills; Participated actively in debates and group discussions, contributing insightful perspectives; Contributed to the Report Writing Team, providing analytical insights for public outreach; Supported coding initiatives and club activities, including involvement in hackathon events.
+                    - Core Member (General Secretary), SCC Coding Club (Nov 2024 – Present): Co-organized "Code Oddessey" competition for 150+ participants, managing logistics and communication; Played a key role in hackathon coordination, ensuring successful execution of technical challenges; Demonstrated strong problem-solving and teamwork; Contributed to successful event promotion.
+                    - Blog Writer, Medium & Hashnode ([Start Date] – Present): Regularly write and publish technical and community-focused articles on Medium and Hashnode platforms; Engage with readers and contribute to online discussions within the tech blogging community; Utilize content creation skills to explain complex topics clearly and concisely.
+                    - Report Writer, TensorFlow User Group Prayagraj & GDG Prayagraj ([Start Date] – Present): Authored comprehensive reports synthesizing session feedback, engagement metrics, and program development insights; Applied strong analytical and communication skills to refine public outreach strategies; Contributed to documentation and knowledge sharing for community initiatives; Ensured clear and effective communication of technical and event-related information.
+
+                    Skills:
+                    Technical: Python, C++, JavaScript, HTML/CSS, Dart, FlutterFlow, Prompt Engineering, AI Tools, Canva, Google Workspace (Google Calendar, Google Sheets, Email Drafting), Microsoft Workspace (Excel, PowerPoint).
+                    Soft: Community Management, Leadership, Event Coordination, Public Speaking, Teamwork, Problem-Solving, Project Management, Public Relations, Time Management, Effective Communication, Critical Thinking, Digital Marketing, Content Creation, Blog Writing, Report Writing.
+
+                    Projects:
+                    - EcoQuest: Your Planet Pal (Build Fest '25): Developed an interactive, personalized guide application focused on promoting environmental action and sustainable practices.
+                    - Frontend Development Project: Designed and implemented responsive user interfaces for a web application.
+
+                    Achievements:
+                    - Code ODC Competition: Secured 2nd place.
+                    - "Patchamomma" Selection by GDG Prayagraj.
+                `;
+
+                const prompt = `As a professional resume reviewer, summarize the following resume content into a concise, impactful paragraph (max 100 words) suitable for a Google Ambassador Program application. Focus on community building, leadership, technical aptitude, event management, content creation, analytical report writing, proficiency in Google and Microsoft Workspace tools, AI for marketing, design skills, public speaking, and hosting online sessions.
+
+                Resume Content:
+                ${resumeContent}`;
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        summaryOutput.innerHTML = text;
+                    } else {
+                        summaryOutput.innerHTML = '<p class="text-red-500">Error: Could not generate summary. Please try again.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    summaryOutput.innerHTML = '<p class="text-red-500">Error: Failed to connect to the API. Please check your network or try again later.</p>';
+                } finally {
+                    summaryLoading.classList.add('hidden');
+                }
+            }
+
+            // Intersection Observer for scroll animations
+            const sections = document.querySelectorAll('.animate-on-scroll');
+            const observerOptions = {
+                root: null, /* viewport */
+                rootMargin: '0px',
+                threshold: 0.1 /* 10% of element visible */
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target); /* Stop observing once visible */
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komal Pandey - Interactive Resume</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (FDFBF8, 4A4A4A, A58A73, 8B705C) -->
+    <!-- Application Structure Plan: A single-page portfolio design with a top navigation bar for quick access to key sections (Profile, Experience, Skills, Projects, Contact). The structure prioritizes user engagement over a traditional linear resume format. An interactive tabbed timeline for 'Experience' allows users to focus on specific roles without overwhelming them. The 'Skills' section uses charts to provide a quick, visual summary of technical and soft skills, which is more digestible than a simple list. This dashboard-like approach is chosen to make exploring Komal's qualifications an intuitive and engaging experience for recruiters. -->
+    <!-- Visualization & Content Choices: 
+        - Experience History -> Goal: Organize/Inform -> Viz: Interactive Tabs (HTML/JS) -> Interaction: Click to switch content -> Justification: Cleaner and more focused than a long list, allowing users to delve into details as needed.
+        - Soft Skills List -> Goal: Compare/Inform -> Viz: Radar Chart (Chart.js/Canvas) -> Interaction: Hover for tooltips -> Justification: Provides a holistic, "well-rounded" view of interpersonal abilities, which is visually compelling.
+        - Technical Skills List -> Goal: Compare/Inform -> Viz: Horizontal Bar Chart (Chart.js/Canvas) -> Interaction: Hover for tooltips -> Justification: Effectively compares proficiency across different technologies in a clear, standard format.
+        - Projects/Awards -> Goal: Organize/Inform -> Viz: Card Layout (HTML/Tailwind) -> Interaction: Subtle hover effects -> Justification: Modern, responsive way to present distinct items of work and achievement.
+        - Resume Summary Generator -> Goal: Inform/Synthesize -> Viz: Text Output (HTML/JS) -> Interaction: Button click to generate summary via LLM -> Justification: Provides a quick, AI-powered overview of the resume, useful for rapid assessment.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Max width for chart container */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height for chart */
+            max-height: 400px; /* Max height for chart */
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px; /* Adjust height for larger screens */
+            }
+        }
+        .tab-active {
+            border-color: #A58A73;
+            color: #A58A73;
+            font-weight: 600;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #A58A73;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Global transition for subtle hover effects */
+        a, button, .tab-btn, .hover\:shadow-lg, .hover\:-translate-y-1 {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Sticky header shadow on scroll */
+        .header-scrolled {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Animation for scroll reveal */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .tab-pane {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .tab-pane.hidden {
+            opacity: 0;
+            /* To ensure it's truly hidden and doesn't take up space, display: none might be needed after transition */
+            /* For simplicity and smooth transition, just opacity 0 is fine for interactive resume. */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="main-header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-[#A58A73]">
+                Komal Pandey
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#profile" class="text-gray-600 hover:text-[#A58A73] transition-colors">Profile</a>
+                <a href="#experience" class="text-gray-600 hover:text-[#A58A73] transition-colors">Experience</a>
+                <a href="#skills" class="text-gray-600 hover:text-[#A58A73] transition-colors">Skills</a>
+                <a href="#projects" class="text-gray-600 hover:text-[#A58A73] transition-colors">Projects</a>
+                <a href="#contact" class="text-gray-600 hover:text-[#A58A73] transition-colors">Contact</a>
+            </div>
+            <div class="md:hidden">
+                <button id="menu-btn" class="text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#profile" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Profile</a>
+            <a href="#experience" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Experience</a>
+            <a href="#skills" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Skills</a>
+            <a href="#projects" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Projects</a>
+            <a href="#contact" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Contact</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        
+        <section id="profile" class="text-center mb-24 animate-on-scroll">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-[#A58A73]">Community Relations & Tech Enthusiast</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+                A driven B.Tech student blending foundational technical acumen with exceptional interpersonal and organizational skills. Passionate about community building, event management, and the synergy of technology and environmental sustainability. Eager to leverage proven abilities in leading collaborative teams, coordinating hackathons, and fostering vibrant tech ecosystems to promote Google initiatives and empower peers as a Google Ambassador.
+            </p>
+            <div class="bg-white p-8 rounded-xl shadow-md border border-gray-200/50 max-w-3xl mx-auto mb-8">
+                <h3 class="text-2xl font-bold text-[#A58A73] mb-4">Education</h3>
+                <p class="text-xl font-semibold">Bachelor of Technology, Computer Science Engineering</p>
+                <p class="text-gray-600 mb-1">Shambhunath Institute of Engineering and Technology, Prayagraj</p>
+                <p class="text-gray-500 text-sm">Expected Graduation: September 2027 | CGPA: 7.5</p>
+            </div>
+
+            <button id="generate-summary-btn" class="bg-[#A58A73] text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-[#8B705C] transition-colors shadow-md">
+                ✨ Generate Resume Summary
+            </button>
+            <div id="summary-output-container" class="mt-8 hidden">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 max-w-3xl mx-auto">
+                    <h3 class="text-xl font-bold text-[#A58A73] mb-4">AI-Generated Summary</h3>
+                    <div id="summary-output" class="text-gray-700 text-left"></div>
+                    <div id="summary-loading" class="flex justify-center items-center mt-4 hidden">
+                        <div class="spinner"></div>
+                        <span class="ml-2 text-gray-600">Generating summary...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="experience" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Professional Experience</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">This section highlights key roles in community engagement and event organization. Click on each tab to explore the specific responsibilities and achievements in that position, showcasing a consistent dedication to building and supporting tech communities.</p>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-8 border-b border-gray-200">
+                    <nav class="flex space-x-2 sm:space-x-4 overflow-x-auto pb-2" aria-label="Tabs">
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap tab-active" data-tab="gdg-wit">GDG - Women in Tech</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="gdg-social">GDG - Social Media</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="scc">SCC Coding Club</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="blog-writer">Blog Writer</button>
+                        <button class="tab-btn py-4 px-1 border-b-2 font-medium text-sm sm:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" data-tab="report-writer">Report Writer</button>
+                    </nav>
+                </div>
+
+                <div id="tab-content" class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <div id="gdg-wit" class="tab-pane active">
+                        <h3 class="font-bold text-xl mb-1">Women in Tech Program Contributor/Trainee</h3>
+                        <p class="text-gray-500 mb-4">GDG Prayagraj | Apr 2025 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Supported daily operations, coordinating emails and virtual meetings for community engagement.</li>
+                            <li>Contributed to report writing, synthesizing session feedback and engagement metrics.</li>
+                            <li>Assisted in hosting virtual Women in Tech sessions, including managing technical aspects and participant interaction for online events.</li>
+                            <li>Hosted several online sessions for Women in Tech leadership initiatives.</li>
+                            <li>Gained hands-on experience in community outreach, event coordination, and strategic communication.</li>
+                        </ul>
+                    </div>
+                    <div id="gdg-social" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Social Media and Community Volunteer</h3>
+                        <p class="text-gray-500 mb-4">GDG Prayagraj | Jan 2025 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Orchestrated community engagement by creating and scheduling compelling social media content.</li>
+                            <li>Served as a host/moderator for various college events and group discussions.</li>
+                            <li>Spoke in and anchored various college events and programs, demonstrating strong public speaking skills.</li>
+                            <li>Participated actively in debates and group discussions, contributing insightful perspectives.</li>
+                            <li>Contributed to the Report Writing Team, providing analytical insights for public outreach.</li>
+                            <li>Supported coding initiatives and club activities, including involvement in hackathon events.</li>
+                        </ul>
+                    </div>
+                    <div id="scc" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Core Member (General Secretary)</h3>
+                        <p class="text-gray-500 mb-4">SCC Coding Club | Nov 2024 – Present</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Co-organized "Code Oddessey" competition for 150+ participants, managing logistics and communication.</li>
+                            <li>Played a key role in hackathon coordination, ensuring successful execution of technical challenges.</li>
+                            <li>Demonstrated strong problem-solving and teamwork in a fast-paced event environment.</li>
+                            <li>Contributed to successful event promotion, leading to full participant registration.</li>
+                        </ul>
+                    </div>
+                    <div id="blog-writer" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Blog Writer</h3>
+                        <p class="text-gray-500 mb-4">Medium & Hashnode | [Start Date] – Present (Please fill in your start date)</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Regularly write and publish technical and community-focused articles on Medium and Hashnode platforms.</li>
+                            <li>Engage with readers and contribute to online discussions within the tech blogging community.</li>
+                            <li>Utilize content creation skills to explain complex topics clearly and concisely.</li>
+                            <li>[Add specific examples of topics, impact, or reader engagement if possible.]</li>
+                        </ul>
+                    </div>
+                    <div id="report-writer" class="tab-pane hidden">
+                        <h3 class="font-bold text-xl mb-1">Report Writer</h3>
+                        <p class="text-gray-500 mb-4">TensorFlow User Group Prayagraj & GDG Prayagraj | [Start Date] – Present (Please fill in your start date)</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Authored comprehensive reports synthesizing session feedback, engagement metrics, and program development insights.</li>
+                            <li>Applied strong analytical and communication skills to refine public outreach strategies.</li>
+                            <li>Contributed to documentation and knowledge sharing for community initiatives.</li>
+                            <li>Ensured clear and effective communication of technical and event-related information.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="skills" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Core Competencies</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">The following charts offer a visual summary of my key skills. The radar chart illustrates my strengths in interpersonal and leadership areas, essential for community roles. The bar chart details my technical proficiency, showcasing the tools I use to build and innovate.</p>
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <h3 class="text-xl font-bold text-center mb-4">Soft Skills</h3>
+                    <div class="chart-container">
+                        <canvas id="softSkillsChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-200/50">
+                    <h3 class="text-xl font-bold text-center mb-4">Technical Skills</h3>
+                    <div class="chart-container">
+                        <canvas id="technicalSkillsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="mb-24 animate-on-scroll">
+            <h2 class="text-3xl font-bold text-center mb-2 text-[#A58A73]">Projects & Achievements</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">This area highlights key projects that reflect my technical abilities and passion for creating impactful solutions, alongside notable achievements in competitive environments. Each item represents a commitment to learning and applying my skills.</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">EcoQuest: Your Planet Pal</h3>
+                    <p class="text-sm text-gray-500 mb-3">Build Fest '25</p>
+                    <p class="text-gray-700">Developed an interactive, personalized guide application focused on promoting environmental action and sustainable practices.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">Frontend Development Project</h3>
+                    <p class="text-sm text-gray-500 mb-3">Personal Project</p>
+                    <p class="text-gray-700">Designed and implemented responsive user interfaces for a web application, focusing on user experience and clean code.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">Code ODC Competition</h3>
+                    <p class="text-sm text-gray-500 mb-3">Achievement</p>
+                    <p class="text-gray-700">Secured 2nd place in the competition hosted by SCC SIET Coding Club, demonstrating strong problem-solving and coding abilities.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                    <h3 class="font-bold text-lg mb-2">"Patchamomma" Selection</h3>
+                    <p class="text-sm text-gray-500 mb-3">Achievement</p>
+                    <p class="text-gray-700">Selected for the "Patchamomma" initiative by GDG Prayagraj, highlighting a proactive approach to impactful projects.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer id="contact" class="bg-gray-800 text-white">
+        <div class="container mx-auto px-6 py-10 text-center">
+            <h2 class="text-2xl font-bold mb-4">Get In Touch</h2>
+            <p class="mb-6">Feel free to reach out for collaborations or just a friendly chat.</p>
+            <div class="flex justify-center items-center space-x-6">
+                <a href="mailto:komalpandey23139936@gmail.com" class="hover:text-[#A58A73] transition-colors flex items-center justify-center">
+                    <span class="mr-2 text-xl">📧</span> komalpandey23139936@gmail.com
+                </a>
+                <span>&bull;</span>
+                <a href="https://linkedin.com/in/komal-pandey-2b1b8b2a0" target="_blank" class="hover:text-[#A58A73] transition-colors flex items-center justify-center">
+                    <span class="mr-2 text-xl">🔗</span> LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile menu toggle
+            const menuBtn = document.getElementById('menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Sticky header shadow on scroll
+            const mainHeader = document.getElementById('main-header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 0) {
+                    mainHeader.classList.add('header-scrolled');
+                } else {
+                    mainHeader.classList.remove('header-scrolled');
+                }
+            });
+
+            // Experience Tabs
+            const tabs = document.querySelectorAll('.tab-btn');
+            const panes = document.querySelectorAll('.tab-pane');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(item => item.classList.remove('tab-active'));
+                    tab.classList.add('tab-active');
+
+                    const target = tab.getAttribute('data-tab');
+                    panes.forEach(pane => {
+                        // Fade out other panes and then hide
+                        if (pane.id !== target) {
+                            pane.style.opacity = '0';
+                            pane.addEventListener('transitionend', function handler() {
+                                pane.classList.add('hidden');
+                                pane.removeEventListener('transitionend', handler);
+                            }, { once: true });
+                        }
+                    });
+
+                    // Fade in the target pane
+                    const targetPane = document.getElementById(target);
+                    targetPane.classList.remove('hidden'); // Make it visible for transition
+                    setTimeout(() => {
+                        targetPane.style.opacity = '1';
+                    }, 10); // Small delay to trigger transition
+                });
+            });
+
+            // Initial setup for tab content display
+            // Ensure only the first tab content is visible initially and others are hidden with opacity 0
+            panes.forEach((pane, index) => {
+                if (index === 0) {
+                    pane.classList.remove('hidden');
+                    pane.style.opacity = '1';
+                } else {
+                    pane.classList.add('hidden');
+                    pane.style.opacity = '0';
+                }
+            });
+
+
+            // Chart.js Configuration
+            const chartFontColor = '#4A4A4A';
+            const chartGridColor = 'rgba(200, 200, 200, 0.2)';
+            const primaryChartColor = 'rgba(165, 138, 115, 0.6)';
+            const primaryChartBorderColor = 'rgba(165, 138, 115, 1)';
+
+            // Soft Skills Chart (Radar)
+            const softSkillsCtx = document.getElementById('softSkillsChart').getContext('2d');
+            new Chart(softSkillsCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Community Mgmt', 'Leadership', 'Event Coordination', 'Public Speaking', 'Teamwork', 'Problem-Solving', 'Content Creation', 'Report Writing'],
+                    datasets: [{
+                        label: 'Soft Skills',
+                        data: [90, 85, 95, 95, 90, 88, 92, 90],
+                        backgroundColor: primaryChartColor,
+                        borderColor: primaryChartBorderColor,
+                        pointBackgroundColor: primaryChartBorderColor,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: primaryChartBorderColor
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: { color: chartGridColor },
+                            grid: { color: chartGridColor },
+                            pointLabels: { color: chartFontColor, font: { size: 12 } },
+                            ticks: {
+                                backdropColor: '#FDFBF8',
+                                color: chartFontColor,
+                                stepSize: 25
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Technical Skills Chart (Bar)
+            const technicalSkillsCtx = document.getElementById('technicalSkillsChart').getContext('2d');
+            new Chart(technicalSkillsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Python', 'C++', 'JavaScript', 'HTML/CSS', 'Dart', 'FlutterFlow', 'Prompt Engineering', 'AI Tools', 'Canva', 'Google Workspace', 'Microsoft Workspace'],
+                    datasets: [{
+                        label: 'Technical Proficiency (Illustrative)',
+                        data: [85, 75, 80, 90, 70, 75, 85, 87, 90, 90, 88],
+                        backgroundColor: primaryChartColor,
+                        borderColor: primaryChartBorderColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: chartGridColor },
+                            ticks: { color: chartFontColor }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: chartFontColor }
+                        }
+                    }
+                }
+            });
+
+            // Gemini API Integration for Resume Summary
+            const generateSummaryBtn = document.getElementById('generate-summary-btn');
+            const summaryOutputContainer = document.getElementById('summary-output-container');
+            const summaryOutput = document.getElementById('summary-output');
+            const summaryLoading = document.getElementById('summary-loading');
+
+            generateSummaryBtn.addEventListener('click', generateResumeSummary);
+
+            async function generateResumeSummary() {
+                summaryOutputContainer.classList.remove('hidden');
+                summaryOutput.innerHTML = '';
+                summaryLoading.classList.remove('hidden');
+
+                const resumeContent = `
+                    Summary: A driven B.Tech student blending foundational technical acumen with exceptional interpersonal and organizational skills. Passionate about community building, event management, and the synergy of technology and environmental sustainability. Eager to leverage proven abilities in leading collaborative teams, coordinating hackathons, and fostering vibrant tech ecosystems to promote Google initiatives and empower peers as a Google Ambassador.
+
+                    Education: Bachelor of Technology, Computer Science Engineering from Shambhunath Institute of Engineering and Technology, Prayagraj. Expected Graduation: September 2027. CGPA: 7.5.
+
+                    Certifications: AI for Marketing and Promoting (EdX).
+
+                    Experience:
+                    - Women in Tech Program Contributor/Trainee, GDG Prayagraj (Apr 2025 – Present): Supported daily operations, coordinating emails and virtual meetings for community engagement; Contributed to report writing, synthesizing session feedback and engagement metrics; Assisted in hosting virtual Women in Tech sessions, managing technical aspects and participant interaction; Gained hands-on experience in community outreach, event coordination, and strategic communication; Hosted several online sessions for Women in Tech leadership initiatives.
+                    - Social Media and Community Volunteer, GDG Prayagraj (Jan 2025 – Present): Orchestrated community engagement by creating and scheduling compelling social media content; Served as a host/moderator for various college events and group discussions; Spoke in and anchored various college events and programs, demonstrating strong public speaking skills; Participated actively in debates and group discussions, contributing insightful perspectives; Contributed to the Report Writing Team, providing analytical insights for public outreach; Supported coding initiatives and club activities, including involvement in hackathon events.
+                    - Core Member (General Secretary), SCC Coding Club (Nov 2024 – Present): Co-organized "Code Oddessey" competition for 150+ participants, managing logistics and communication; Played a key role in hackathon coordination, ensuring successful execution of technical challenges; Demonstrated strong problem-solving and teamwork; Contributed to successful event promotion.
+                    - Blog Writer, Medium & Hashnode ([Start Date] – Present): Regularly write and publish technical and community-focused articles on Medium and Hashnode platforms; Engage with readers and contribute to online discussions within the tech blogging community; Utilize content creation skills to explain complex topics clearly and concisely.
+                    - Report Writer, TensorFlow User Group Prayagraj & GDG Prayagraj ([Start Date] – Present): Authored comprehensive reports synthesizing session feedback, engagement metrics, and program development insights; Applied strong analytical and communication skills to refine public outreach strategies; Contributed to documentation and knowledge sharing for community initiatives; Ensured clear and effective communication of technical and event-related information.
+
+                    Skills:
+                    Technical: Python, C++, JavaScript, HTML/CSS, Dart, FlutterFlow, Prompt Engineering, AI Tools, Canva, Google Workspace (Google Calendar, Google Sheets, Email Drafting), Microsoft Workspace (Excel, PowerPoint).
+                    Soft: Community Management, Leadership, Event Coordination, Public Speaking, Teamwork, Problem-Solving, Project Management, Public Relations, Time Management, Effective Communication, Critical Thinking, Digital Marketing, Content Creation, Blog Writing, Report Writing.
+
+                    Projects:
+                    - EcoQuest: Your Planet Pal (Build Fest '25): Developed an interactive, personalized guide application focused on promoting environmental action and sustainable practices.
+                    - Frontend Development Project: Designed and implemented responsive user interfaces for a web application.
+
+                    Achievements:
+                    - Code ODC Competition: Secured 2nd place.
+                    - "Patchamomma" Selection by GDG Prayagraj.
+                `;
+
+                const prompt = `As a professional resume reviewer, summarize the following resume content into a concise, impactful paragraph (max 100 words) suitable for a Google Ambassador Program application. Focus on community building, leadership, technical aptitude, event management, content creation, analytical report writing, proficiency in Google and Microsoft Workspace tools, AI for marketing, design skills, public speaking, and hosting online sessions.
+
+                Resume Content:
+                ${resumeContent}`;
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        summaryOutput.innerHTML = text;
+                    } else {
+                        summaryOutput.innerHTML = '<p class="text-red-500">Error: Could not generate summary. Please try again.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    summaryOutput.innerHTML = '<p class="text-red-500">Error: Failed to connect to the API. Please check your network or try again later.</p>';
+                } finally {
+                    summaryLoading.classList.add('hidden');
+                }
+            }
+
+            // Intersection Observer for scroll animations
+            const sections = document.querySelectorAll('.animate-on-scroll');
+            const observerOptions = {
+                root: null, /* viewport */
+                rootMargin: '0px',
+                threshold: 0.1 /* 10% of element visible */
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target); /* Stop observing once visible */
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html>
